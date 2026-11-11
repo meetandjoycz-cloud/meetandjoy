@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Akce Meet &amp; Joy – Liberecký kraj</title>
+<style>body{margin:0;background:#fff}</style>
+</head>
+<body>
+<div id="mj-akce"></div>
+<style>
+#mj-akce{--fg:#1B0B5C;--muted:#5E5780;--line:#E4DDF1;--accent:#5A25BE;--soft:#F1EAFB;--pink:#F31A71;--warn:#A3480F;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;color:var(--fg);background:#fff;padding:8px;box-sizing:border-box}
+#mj-akce *{box-sizing:border-box}
+#mj-akce h2,#mj-akce h3,#mj-akce p{margin:0}
+#mj-akce .top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+#mj-akce .top h2{font-size:22px;font-weight:700}
+#mj-akce .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 18px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--fg);font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+#mj-akce .btn.p{background:var(--accent);border-color:var(--accent);color:#fff}
+#mj-akce .btn.s{min-height:38px;padding:6px 14px;font-size:14px}
+#mj-akce .btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
+#mj-akce .decl{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+#mj-akce .decl p{color:var(--muted);flex:1 1 240px}
+#mj-akce .chips,#mj-akce .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+#mj-akce .chip{font:inherit;font-size:14px;min-height:38px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--fg);cursor:pointer}
+#mj-akce .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+#mj-akce select{font:inherit;font-size:16px;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--fg);flex:1 1 150px;min-width:0}
+#mj-akce label.chk{display:inline-flex;align-items:center;gap:8px;min-height:44px;cursor:pointer}
+#mj-akce label.chk input{width:20px;height:20px;accent-color:var(--accent)}
+#mj-akce .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));margin-top:6px}
+#mj-akce .card{border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:9px;min-width:0;background:#fff}
+#mj-akce .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+#mj-akce .pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--accent)}
+#mj-akce .kdy{font-size:13px;font-weight:600}
+#mj-akce .card h3{font-size:18px;line-height:1.25;overflow-wrap:anywhere}
+#mj-akce .muted{color:var(--muted);overflow-wrap:anywhere}
+#mj-akce .meta{font-size:13px;color:var(--muted)}
+#mj-akce .cap{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+#mj-akce .cap .plno{color:var(--warn)}
+#mj-akce .track{height:6px;border-radius:999px;background:var(--soft);overflow:hidden}
+#mj-akce .fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--accent))}
+#mj-akce .empty{grid-column:1/-1;border:1px dashed var(--line);border-radius:14px;padding:22px 16px;color:var(--muted)}
+</style>
+<script>
+(function () {
+  // ===== Vyplň tři odkazy a případně ENTRY (viz návod) =====
+  var CONFIG = {
+    CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTTIYqbH0DYIGy5WIIvkofCVFfx0KaBLpbXXiKB7ILmw7E6MpwQox3UYHUgq0xFE88LSqMXS9gwxqOm/pub?gid=1086481231&single=true&output=csv",
+    PRIHLASENI: "https://forms.gle/MsXkXHdhFJ24J1bk7",
+    PRIDAT: "https://forms.gle/pS9dveRMDhtaa4FEA",
+    ENTRY: "" // volitelné, např. entry.123456789 (předvyplní akci ve formuláři Přihlášení)
+  };
+
+  var root = document.getElementById("mj-akce");
+  var F = { druh: "", mesto: "", vek: "", volno: false };
+  var data = [];
+
+  function isUrl(u) { return /^https:\/\//.test(u); }
+  function el(tag, props, kids) {
+    var n = document.createElement(tag);
+    if (props) Object.keys(props).forEach(function (k) {
+      var v = props[k];
+      if (v == null || v === false) return;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k === "onclick") n.addEventListener("click", v);
+      else if (k === "onchange") n.addEventListener("change", v);
+      else n.setAttribute(k, v === true ? "" : v);
+    });
+    (kids || []).forEach(function (c) { if (c) n.append(c.nodeType ? c : document.createTextNode(String(c))); });
+    return n;
+  }
+  function link(url, text, cls) {
+    return isUrl(url) ? el("a", { class: cls, href: url, target: "_blank", rel: "noopener", text: text }) : null;
+  }
+
+  function parseCSV(t) {
+    var rows = [], row = [], f = "", q = false;
+    for (var i = 0; i < t.length; i++) {
+      var c = t[i];
+      if (q) {
+        if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && t[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+      else f += c;
+    }
+    if (f !== "" || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+  function toObjects(rows) {
+    if (!rows.length) return [];
+    var hl = rows[0];
+    return rows.slice(1).filter(function (r) { return r.length > 1 && r[1]; }).map(function (r) {
+      var o = {}; hl.forEach(function (h, i) { o[h.trim()] = (r[i] || "").trim(); }); return o;
+    });
+  }
+  function uniq(key) {
+    var s = {}; data.forEach(function (a) { if (a[key]) s[a[key]] = 1; });
+    return Object.keys(s).sort();
+  }
+
+  function prihlasUrl(a) {
+    var u = CONFIG.PRIHLASENI;
+    if (CONFIG.ENTRY && a["Štítek"]) u += (u.indexOf("?") > -1 ? "&" : "?") + "usp=pp_url&" + CONFIG.ENTRY + "=" + encodeURIComponent(a["Štítek"]);
+    return u;
+  }
+
+  function card(a) {
+    var mist = Number(a["Míst celkem"]) || 0, prihl = Number(a["Přihlášeno"]) || 0, volno = Number(a["Volno"]) || 0;
+    var pct = mist ? Math.min(100, Math.round(prihl / mist * 100)) : 0;
+    var c = el("article", { class: "card" }, [
+      el("div", { class: "row" }, [el("span", { class: "pill", text: a["Druh"] }), el("span", { class: "kdy", text: a["Kdy"] })]),
+      el("h3", { text: a["Název"] }),
+      el("p", { class: "muted", text: a["Město"] + (a["Místo"] ? " · " + a["Místo"] : "") }),
+      a["Popis"] ? el("p", { text: a["Popis"] }) : null,
+      el("p", { class: "meta", text: "Věk: " + a["Věk"] + (a["Pořádá"] ? " · Pořádá: " + a["Pořádá"] : "") }),
+      el("div", { class: "cap" }, [
+        el("span", { class: volno ? "" : "plno", text: volno ? "Volno " + volno + " z " + mist : "Plno (" + mist + ")" }),
+        el("span", { class: "muted", text: prihl + " přihlášeno" })
+      ]),
+      el("div", { class: "track" }, [el("div", { class: "fill", style: "width:" + pct + "%" })])
+    ]);
+    if (isUrl(CONFIG.PRIHLASENI)) {
+      c.append(volno
+        ? el("a", { class: "btn p s", href: prihlasUrl(a), target: "_blank", rel: "noopener", text: "Přihlásit se" })
+        : el("span", { class: "btn s", "aria-disabled": "true", text: "Plno" }));
+    }
+    return c;
+  }
+
+  function render(msg) {
+    root.textContent = "";
+    var top = el("div", { class: "top" }, [el("h2", { text: "Nadcházející akce" }), link(CONFIG.PRIDAT, "Přidat vlastní akci", "btn p")]);
+    root.append(top);
+    if (msg) { root.append(el("p", { class: "empty", text: msg })); return; }
+
+    var chips = el("div", { class: "chips", role: "group", "aria-label": "Druh akce" });
+    [""].concat(uniq("Druh")).forEach(function (d) {
+      chips.append(el("button", { type: "button", class: "chip", "aria-pressed": String(F.druh === d), text: d || "Vše", onclick: function () { F.druh = d; render(); } }));
+    });
+    root.append(chips);
+
+    function sel(label, key, values) {
+      var s = el("select", { "aria-label": label }, [el("option", { value: "", text: label })]);
+      values.forEach(function (v) { s.append(el("option", { value: v, text: v })); });
+      s.value = F[key];
+      s.addEventListener("change", function () { F[key] = s.value; render(); });
+      return s;
+    }
+    var cb = el("input", { type: "checkbox", onchange: function (e) { F.volno = e.target.checked; render(); } });
+    cb.checked = F.volno;
+    root.append(el("div", { class: "filters" }, [
+      sel("Všechna města", "mesto", uniq("Město")),
+      sel("Všechny věkové skupiny", "vek", uniq("Věk")),
+      el("label", { class: "chk" }, [cb, "Jen s volným místem"])
+    ]));
+
+    var shown = data.filter(function (a) {
+      return (!F.druh || a["Druh"] === F.druh) && (!F.mesto || a["Město"] === F.mesto) && (!F.vek || a["Věk"] === F.vek) && (!F.volno || Number(a["Volno"]) > 0);
+    });
+    var grid = el("div", { class: "grid" });
+    if (!data.length) grid.append(el("p", { class: "empty", text: "Zatím tu není žádná schválená akce. Přidej první vlastní akci." }));
+    else if (!shown.length) grid.append(el("p", { class: "empty", text: "Pro tyto filtry nic nemáme." }));
+    else shown.forEach(function (a) { grid.append(card(a)); });
+    root.append(grid);
+  }
+
+  render("Načítám akce…");
+  if (!isUrl(CONFIG.CSV)) { render("Chybí odkaz na tabulku s akcemi."); return; }
+  fetch(CONFIG.CSV, { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then(function (t) { data = toObjects(parseCSV(t)); render(); })
+    .catch(function () { render("Seznam akcí se nepodařilo načíst. Zkus stránku obnovit."); });
+})();
+</script>
+
+</body>
+</html>
